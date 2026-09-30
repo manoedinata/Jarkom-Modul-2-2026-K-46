@@ -205,3 +205,33 @@
    gamma:~# getent hosts oblada.k46.com
    192.234.5.6       oblada.k46.com  oblada.k46.com
    ```
+
+6. Zone transfer antara **prab** dan **tedd** dipastikan berjalan dengan membandingkan serial SOA di keduanya, lalu membuktikan **tedd** benar-benar memegang salinan lengkap zona (bukan cuma serial yang kebetulan sama) lewat *full zone transfer* (AXFR) dari IP **tedd** (`192.234.5.3`, yang diizinkan oleh `allow-transfer` di **prab** sejak soal 4).
+
+   ![zone transfer prab tedd](assets/zone-transfer.png)
+
+   ```
+   prab:~# dig @127.0.0.1 k46.com SOA +short
+   prab.k46.com. admin.k46.com. 2026093002 3600 1800 604800 86400
+   tedd:~# dig @127.0.0.1 k46.com SOA +short
+   prab.k46.com. admin.k46.com. 2026093002 3600 1800 604800 86400
+   ```
+
+   AXFR dari **tedd** ke **prab** mengembalikan seluruh 16 record zona (1 SOA, 2 NS, 14 A) — identik dengan isi `/etc/bind/db.k46.com` di **prab**:
+
+   ```
+   tedd:~# dig @192.234.5.2 k46.com AXFR +noall +answer | sort
+   abbey.k46.com.    604800  IN  A    192.234.3.2
+   alpha.k46.com.    604800  IN  A    192.234.1.2
+   ...
+   k46.com.          604800  IN  SOA  prab.k46.com. admin.k46.com. 2026093002 ...
+   ...
+   tedd.k46.com.     604800  IN  A    192.234.5.3
+   ```
+
+   Sebagai bukti tambahan bahwa `allow-transfer` benar-benar dibatasi (bukan terbuka untuk siapa saja), permintaan AXFR dari selain IP **tedd** ditolak oleh **prab**:
+
+   ```
+   prab:~# dig @127.0.0.1 k46.com AXFR
+   ; Transfer failed.
+   ```
