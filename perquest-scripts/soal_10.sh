@@ -1,21 +1,9 @@
-#!/bin/sh
-# soal 1: IP address + default gateway (Switch1/2/3 segment)
-ip addr replace 192.234.5.6/24 dev eth0
-ip route replace default via 192.234.5.1
+#!/bin/bash
+# Soal 10: web dinamis PHP-FPM (nginx) di area core (oblada, molly)
+# clean URL /profil (tanpa .php)
 
-# soal 3+4: resolver -- urutan akhir setelah DNS internal (prab, tedd) hidup:
-# prab -> tedd -> 192.168.122.1 (fallback publik)
-cat <<RESOLVEOF > /etc/resolv.conf
-nameserver 192.234.5.2
-nameserver 192.234.5.3
-nameserver 192.168.122.1
-RESOLVEOF
-
-# soal 10/11: web dinamis PHP-FPM + nginx, clean URL /profil.
-# PENTING: hanya /root yang persist -- apt install & /etc/nginx/*, /etc/php/*,
-# /var/www/* ditulis ulang di sini (idempotent) supaya otomatis pulih tiap start.
-dpkg -s nginx >/dev/null 2>&1 && dpkg -s php8.4-fpm >/dev/null 2>&1 \
-    || { apt-get update && apt-get install -y nginx php8.4-fpm; }
+# ==== NODE OBLADA & MOLLY ====
+DEBIAN_FRONTEND=noninteractive apt-get install -y nginx php8.4-fpm
 
 mkdir -p /var/www/core
 cat <<'EOF' > /var/www/core/index.php
@@ -28,8 +16,6 @@ $host = gethostname();
 <body>
     <h1>Selamat datang di The Mesh</h1>
     <p>Dilayani oleh: <?php echo $host; ?></p>
-    <p>Host header diterima: <?php echo $_SERVER['HTTP_HOST'] ?? '-'; ?></p>
-    <p>X-Real-IP diterima: <?php echo $_SERVER['HTTP_X_REAL_IP'] ?? '-'; ?></p>
     <p><a href="/profil">Lihat Profil</a></p>
 </body>
 </html>
@@ -54,7 +40,7 @@ EOF
 cat <<'EOF' > /etc/nginx/sites-available/default
 server {
     listen 80;
-    server_name oblada.k46.com;
+    server_name NODE.k46.com;
     root /var/www/core;
     index index.php;
 
@@ -76,6 +62,14 @@ server {
     }
 }
 EOF
+# (ganti NODE.k46.com -> oblada.k46.com pada node oblada, molly.k46.com pada node molly)
 
 service php8.4-fpm restart
 service nginx restart
+
+# ==== VERIFIKASI (dari client lain, via hostname) ====
+curl -s http://oblada.k46.com/                                             # halaman beranda
+curl -s http://oblada.k46.com/profil                                       # clean URL, tanpa .php
+curl -s -o /dev/null -w '%{http_code}\n' http://oblada.k46.com/profil      # -> 200
+curl -s http://molly.k46.com/  | grep 'Dilayani'
+curl -s http://molly.k46.com/profil | grep 'Node:'

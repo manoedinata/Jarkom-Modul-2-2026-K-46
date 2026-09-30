@@ -307,3 +307,135 @@
    tedd:~# dig @127.0.0.1 -x 192.234.3.2 | grep flags
    ;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
    ```
+
+9. Layanan web statis dijalankan di *area vault* (**obladi**, **desmond**) menggunakan Apache. Direktori `/var/www/html/arsip/` dibuka dengan `Options +Indexes` sehingga seluruh isinya bisa ditelusuri langsung dari browser (*autoindex*/*directory listing*).
+
+   ![autoindex arsip](assets/apache-autoindex.png)
+
+   ```apache
+   <Directory /var/www/html/arsip>
+       Options +Indexes
+       AllowOverride None
+       Require all granted
+   </Directory>
+   ```
+
+   Pengujian dilakukan dari client lain (`gamma`) melalui **hostname**, bukan IP:
+
+   ```
+   gamma:~# curl -s http://obladi.k46.com/arsip/
+   <title>Index of /arsip</title>
+   <h1>Index of /arsip</h1>
+   ...catatan1.txt...
+   ...catatan2.txt...
+   ...peta.txt...
+
+   gamma:~# curl -s http://desmond.k46.com/arsip/
+   <title>Index of /arsip</title>
+   <h1>Index of /arsip</h1>
+   ...catatan1.txt...
+   ...catatan2.txt...
+   ...peta.txt...
+
+   gamma:~# curl -s -o /dev/null -w '%{http_code}\n' http://obladi.k46.com/arsip/
+   200
+   ```
+
+10. Layanan web dinamis dijalankan di *area core* (**oblada**, **molly**) menggunakan PHP-FPM 8.4 di balik nginx. Aplikasi sederhana dibuat dengan dua halaman: beranda (`index.php`) dan profil (`profil.php`), dengan *rewrite rule* agar `/profil` berfungsi tanpa akhiran `.php` (*clean URL*).
+
+    ![web dinamis core](assets/php-clean-url.png)
+
+    ```nginx
+    location = /profil {
+        rewrite ^ /profil.php last;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+    }
+    ```
+
+    Pengujian dari client lain melalui hostname:
+
+    ```
+    delta:~# curl -s http://oblada.k46.com/ | grep Dilayani
+        <p>Dilayani oleh: oblada</p>
+    delta:~# curl -s http://oblada.k46.com/profil | grep 'Node:'
+        <p>Node: oblada</p>
+    delta:~# curl -s -o /dev/null -w '%{http_code}\n' http://oblada.k46.com/profil
+    200
+
+    delta:~# curl -s http://molly.k46.com/ | grep Dilayani
+        <p>Dilayani oleh: molly</p>
+    delta:~# curl -s http://molly.k46.com/profil | grep 'Node:'
+        <p>Node: molly</p>
+    ```
+
+11. **Penny** (Apache) dikonfigurasi sebagai reverse proxy dengan *balancer* ke seluruh node di *area vault* (**obladi** & **desmond**). **Abbey** (Nginx) dikonfigurasi sebagai reverse proxy ke *area core* (**oblada** & **molly**). Keduanya meneruskan identitas asli pengunjung lewat header `Host` dan `X-Real-IP`.
+
+    ![reverse proxy penny abbey](assets/reverse-proxy.png)
+
+    Catatan debugging: `RequestHeader set X-Real-IP "%{REMOTE_ADDR}s"` (pola yang umum ditemukan di banyak tutorial) **ternyata tidak bekerja** di mod_headers untuk request yang di-proxy — begitu juga varian `%{REMOTE_ADDR}e`, karena `REMOTE_ADDR` belum tersedia di `subprocess_env` pada fase itu. Solusi yang benar: suntikkan dulu lewat `mod_rewrite` (`RewriteRule .* - [E=REAL_IP:%{REMOTE_ADDR}]`), baru `mod_headers` membaca dari variabel itu:
+
+    ```apache
+    RewriteEngine On
+    RewriteRule .* - [E=REAL_IP:%{REMOTE_ADDR}]
+    RequestHeader set X-Real-IP "%{REAL_IP}e"
+    ```
+
+    Pembuktian distribusi lalu lintas: beberapa request beruntun ke **penny** menghasilkan hit yang terbagi rata di access log **obladi** maupun **desmond**, dengan header `Host`/`X-Real-IP` tercatat benar:
+
+    ```
+    obladi:~# tail /var/log/apache2/access.log
+    192.234.4.2 - - [...] "GET /arsip/ HTTP/1.1" 200 1373 host=penny.k46.com xrealip=192.234.1.4
+    desmond:~# tail /var/log/apache2/access.log
+    192.234.4.2 - - [...] "GET /arsip/ HTTP/1.1" 200 1373 host=penny.k46.com xrealip=192.234.1.4
+    ```
+
+    Untuk **abbey**, karena backend-nya aplikasi PHP, pembuktian header lebih langsung — ditampilkan pada halaman itu sendiri, dan beberapa request beruntun terbukti bergantian dilayani **oblada** maupun **molly**:
+
+    ```
+    gamma:~# curl -s http://abbey.k46.com/ | grep -E 'Dilayani|Host header|X-Real-IP'
+        <p>Dilayani oleh: oblada</p>
+        <p>Host header diterima: abbey.k46.com</p>
+        <p>X-Real-IP diterima: 192.234.1.4</p>
+
+    gamma:~# for i in $(seq 1 6); do curl -s http://abbey.k46.com/ | grep Dilayani; done
+        <p>Dilayani oleh: oblada</p>
+        <p>Dilayani oleh: oblada</p>
+        <p>Dilayani oleh: oblada</p>
+        <p>Dilayani oleh: molly</p>
+        <p>Dilayani oleh: oblada</p>
+        <p>Dilayani oleh: molly</p>
+    ```
+
+    > Catatan operasional penting yang ditemukan saat mengerjakan soal ini: pada image `alpinet`/`debinet`, **hanya `/root` yang persisten** lintas *recreate* container (mis. akibat *close*+*reopen* project di GNS3). Paket yang di-`apt install` dan file konfigurasi di `/etc/...` yang ditulis langsung lewat console **hilang** kalau container dibuat ulang. Karena itu seluruh setup soal 4–11 (BIND9, Apache, Nginx, PHP-FPM, beserta isi filenya) ditulis ulang secara idempoten ke dalam `nodes/<host>/init.sh` masing-masing, bukan sekadar `service ... restart` — supaya truly bertahan dari restart apa pun, sesuai semangat soal 20.
+
+12. Path `/admin` di **penny** (yang menyimpan dokumen rahasia sindikat) dilindungi *basic authentication*, dikecualikan dari *reverse proxy* balancer ke area vault (`ProxyPass "/admin" "!"`) supaya dilayani lokal oleh **penny** sendiri. Kredensial: `prabs` / `pakar_pinter_jadi_goblok`.
+
+    ![basic auth admin](assets/basic-auth-admin.png)
+
+    ```apache
+    Alias /admin /var/www/admin
+    <Directory /var/www/admin>
+        AuthType Basic
+        AuthName "Restricted Area"
+        AuthUserFile /etc/apache2/.htpasswd
+        Require valid-user
+    </Directory>
+    ProxyPass "/admin" "!"
+    ```
+
+    Verifikasi dari client lain:
+
+    ```
+    gamma:~# curl -s -o /dev/null -w '%{http_code}\n' http://penny.k46.com/admin/
+    401
+    gamma:~# curl -s -o /dev/null -w '%{http_code}\n' -u prabs:salah http://penny.k46.com/admin/
+    401
+    gamma:~# curl -s -o /dev/null -w '%{http_code}\n' -u prabs:pakar_pinter_jadi_goblok http://penny.k46.com/admin/
+    200
+    gamma:~# curl -s -o /dev/null -w '%{http_code}\n' http://penny.k46.com/arsip/
+    200
+    ```

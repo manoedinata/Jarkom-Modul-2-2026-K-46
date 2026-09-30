@@ -11,5 +11,47 @@ nameserver 192.234.5.3
 nameserver 192.168.122.1
 RESOLVEOF
 
-# soal 4: BIND9 slave untuk zona k46.com (config permanen di /etc/bind/, cukup start ulang service)
-service named start 2>/dev/null || service named restart
+# soal 4/8: BIND9 slave untuk zona k46.com + 3 reverse zone.
+# PENTING: hanya /root yang persist -- apt install & /etc/bind/* ditulis ulang
+# di sini (idempotent) supaya otomatis pulih setiap start.
+dpkg -s bind9 >/dev/null 2>&1 || { apt-get update && apt-get install -y bind9 bind9utils dnsutils; }
+
+cat <<'EOF' > /etc/bind/named.conf.options
+options {
+    directory "/var/cache/bind";
+    forwarders {
+        192.168.122.1;
+    };
+    dnssec-validation no;
+    listen-on { any; };
+    allow-query { any; };
+};
+EOF
+
+cat <<'EOF' > /etc/bind/named.conf.local
+zone "k46.com" {
+    type slave;
+    masters { 192.234.5.2; };
+    file "/var/cache/bind/db.k46.com";
+};
+
+zone "3.234.192.in-addr.arpa" {
+    type slave;
+    masters { 192.234.5.2; };
+    file "/var/cache/bind/db.192.234.3";
+};
+
+zone "4.234.192.in-addr.arpa" {
+    type slave;
+    masters { 192.234.5.2; };
+    file "/var/cache/bind/db.192.234.4";
+};
+
+zone "5.234.192.in-addr.arpa" {
+    type slave;
+    masters { 192.234.5.2; };
+    file "/var/cache/bind/db.192.234.5";
+};
+EOF
+
+service named restart
