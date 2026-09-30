@@ -1,0 +1,10 @@
+problems.pdf
+creds.txt
+venv/
+__pycache__/
+*.pyc
+
+pyproject.toml
+requirements.txt
+gns3api/
+scripts/
