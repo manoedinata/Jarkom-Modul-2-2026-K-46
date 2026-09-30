@@ -235,3 +235,75 @@
    prab:~# dig @127.0.0.1 k46.com AXFR
    ; Transfer failed.
    ```
+
+7. **abbey** dan **penny** ditetapkan sebagai gerbang utama, **obladi**+**desmond** sebagai *area vault* (web statis), **oblada**+**molly** sebagai *area core* (web dinamis). Ditambahkan ke zona `k46.com`: A record `vault.k46.com` (mengarah ke IP **obladi** *dan* **desmond**, dua A record satu nama) dan `core.k46.com` (ke **oblada** dan **molly**), serta CNAME `www.k46.com` → `penny.k46.com` dan `static.k46.com` → `abbey.k46.com`.
+
+   ![zona vault core www static](assets/dns-vault-core.png)
+
+   Verifikasi dari dua klien berbeda (`gamma` dan `delta`) — hasil identik dan konsisten:
+
+   ```
+   gamma:~# dig +short vault.k46.com A
+   192.234.5.4
+   192.234.5.5
+   gamma:~# dig +short core.k46.com A
+   192.234.5.6
+   192.234.5.7
+   gamma:~# dig +short www.k46.com
+   penny.k46.com.
+   192.234.4.2
+   gamma:~# dig +short static.k46.com
+   abbey.k46.com.
+   192.234.3.2
+
+   delta:~# dig +short vault.k46.com A
+   192.234.5.4
+   192.234.5.5
+   delta:~# dig +short core.k46.com A
+   192.234.5.6
+   192.234.5.7
+   delta:~# dig +short www.k46.com
+   penny.k46.com.
+   192.234.4.2
+   delta:~# dig +short static.k46.com
+   abbey.k46.com.
+   192.234.3.2
+   ```
+
+8. Dideklarasikan *reverse zone* untuk segmen jaringan tempat **abbey**, **penny**, *area vault*, dan *area core* berada di **prab** (master). Secara topologi, keempatnya berada di 3 subnet `/24` berbeda (`abbey` di `192.234.3.0/24`, `penny` di `192.234.4.0/24`, *area vault*+*area core* bersama di `192.234.5.0/24`), sehingga dibuat 3 zona reverse terpisah: `3.234.192.in-addr.arpa`, `4.234.192.in-addr.arpa`, `5.234.192.in-addr.arpa`. **tedd** menarik ketiganya sebagai *slave*, lalu diisi PTR agar pencarian balik IP mengembalikan hostname yang benar.
+
+   ![reverse zone PTR](assets/dns-reverse.png)
+
+   ```
+   ; /etc/bind/db.192.234.3 (prab)
+   2       IN      PTR     abbey.k46.com.
+
+   ; /etc/bind/db.192.234.4 (prab)
+   2       IN      PTR     penny.k46.com.
+
+   ; /etc/bind/db.192.234.5 (prab)
+   4       IN      PTR     obladi.k46.com.
+   5       IN      PTR     desmond.k46.com.
+   6       IN      PTR     oblada.k46.com.
+   7       IN      PTR     molly.k46.com.
+   ```
+
+   Verifikasi query reverse dari **tedd** dijawab benar dan *authoritative* (`aa`):
+
+   ```
+   tedd:~# dig @127.0.0.1 -x 192.234.3.2 +short
+   abbey.k46.com.
+   tedd:~# dig @127.0.0.1 -x 192.234.4.2 +short
+   penny.k46.com.
+   tedd:~# dig @127.0.0.1 -x 192.234.5.4 +short
+   obladi.k46.com.
+   tedd:~# dig @127.0.0.1 -x 192.234.5.5 +short
+   desmond.k46.com.
+   tedd:~# dig @127.0.0.1 -x 192.234.5.6 +short
+   oblada.k46.com.
+   tedd:~# dig @127.0.0.1 -x 192.234.5.7 +short
+   molly.k46.com.
+
+   tedd:~# dig @127.0.0.1 -x 192.234.3.2 | grep flags
+   ;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+   ```
