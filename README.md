@@ -165,3 +165,43 @@
    gamma:~# getent hosts www.google.com | head -1
    2001:4860:4828:7700::  www.google.com  www.google.com
    ```
+
+5. "Entitas tanpa identitas adalah anomali," pesan Rootkit. Seluruh Entitas dinamai (*hostname*) sesuai glosarium. Ternyata *hostname* di dalam container sudah otomatis mengikuti nama node GNS3 sejak topologi dibangun (Docker mengisi `/etc/hostname` dan `/etc/hosts` berdasarkan nama container) — bagian ini tinggal diverifikasi, tidak perlu diubah:
+
+   ![verifikasi hostname](assets/hostname-check.png)
+
+   ```
+   gamma:~# hostname; cat /etc/hostname; cat /etc/hosts
+   gamma
+   gamma
+   127.0.1.1   gamma
+   127.0.0.1   localhost
+   ...
+   ```
+
+   Diverifikasi konsisten di seluruh 14 node (`rootkit, alpha, beta, gamma, delta, epsilon, prab, tedd, abbey, penny, obladi, desmond, oblada, molly`) — semua cocok dengan nama glosarium.
+
+   Selanjutnya dibuat domain untuk masing-masing node sesuai namanya (`alpha.k46.com`, `beta.k46.com`, dst.) yang mengarah ke IP node masing-masing, ditambahkan ke zona `k46.com` di **prab**. **prab** dan **tedd** dikecualikan karena domainnya sudah dibuat di soal 4. SOA serial dinaikkan (`2026093002`) agar **tedd** menyadari perubahan dan menarik ulang zona lewat mekanisme *notify* dari soal 4 — tanpa aksi manual tambahan di **tedd**.
+
+   ![domain per-node](assets/dns-pernode.png)
+
+   Verifikasi SOA serial tersinkron dan domain baru ter-*resolve*, termasuk dari client biasa (`gamma`) yang bukan `prab`/`tedd`:
+
+   ```
+   tedd:~# dig @127.0.0.1 k46.com SOA +short
+   prab.k46.com. admin.k46.com. 2026093002 3600 1800 604800 86400
+
+   tedd:~# dig @127.0.0.1 alpha.k46.com A +short
+   192.234.1.2
+   tedd:~# dig @127.0.0.1 obladi.k46.com A +short
+   192.234.5.4
+
+   gamma:~# getent hosts alpha.k46.com
+   192.234.1.2       alpha.k46.com  alpha.k46.com
+   gamma:~# getent hosts abbey.k46.com
+   192.234.3.2       abbey.k46.com  abbey.k46.com
+   gamma:~# getent hosts penny.k46.com
+   192.234.4.2       penny.k46.com  penny.k46.com
+   gamma:~# getent hosts oblada.k46.com
+   192.234.5.6       oblada.k46.com  oblada.k46.com
+   ```
