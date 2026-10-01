@@ -3,6 +3,7 @@
 # forwarding header Host + X-Real-IP, dibuktikan mendistribusikan traffic
 
 # ==== NODE PENNY ====
+apt-get update || true
 DEBIAN_FRONTEND=noninteractive apt-get install -y apache2
 a2enmod proxy proxy_http proxy_balancer lbmethod_byrequests headers rewrite
 
@@ -35,6 +36,7 @@ EOF
 service apache2 restart
 
 # ==== NODE ABBEY ====
+apt-get update || true
 DEBIAN_FRONTEND=noninteractive apt-get install -y nginx
 
 cat <<'EOF' > /etc/nginx/sites-available/default

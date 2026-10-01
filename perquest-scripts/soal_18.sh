@@ -27,7 +27,7 @@ no-resolv
 server=192.234.5.2
 listen-address=127.0.0.1
 EOF
-pkill dnsmasq 2>/dev/null
+pkill dnsmasq 2>/dev/null || true
 dnsmasq
 
 # Fase 1: isi cache dengan IP asli (TTL 15 mulai menurun sejak query pertama ini)
@@ -57,6 +57,6 @@ dig @192.234.5.2 k46.com SOA +short
 dig @192.234.5.3 k46.com SOA +short   # -> serial harus sama
 
 # ==== NODE ALPHA ====
-pkill dnsmasq 2>/dev/null
+pkill dnsmasq 2>/dev/null || true
 
 # Revert state fiktif ini BUKAN bagian dari soal 18 -- lihat perquest-scripts/soal_20.sh.

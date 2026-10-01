@@ -14,7 +14,7 @@ RESOLVEOF
 # soal 9/11: web statis Apache, /arsip/ dengan autoindex.
 # PENTING: hanya /root yang persist -- apt install & /etc/apache2/*, /var/www/*
 # ditulis ulang di sini (idempotent) supaya otomatis pulih setiap start.
-dpkg -s apache2 >/dev/null 2>&1 || { apt-get update && apt-get install -y apache2; }
+dpkg -s apache2 >/dev/null 2>&1 || { apt-get update || true; apt-get install -y apache2; }
 
 mkdir -p /var/www/html/arsip
 [ -f /var/www/html/arsip/catatan1.txt ] || echo 'Dokumen rahasia sindikat #1' > /var/www/html/arsip/catatan1.txt

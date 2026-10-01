@@ -13,6 +13,7 @@ RESOLVEOF
 
 # soal 4/5/7/8: BIND9 master untuk zona k46.com + 3 reverse zone.
 # soal 17: TXT record untuk client (alpha, beta, gamma, delta, epsilon).
+# soal 19: CNAME outbound.k46.com -> http.badssl.com (eksternal).
 # soal 18: SENGAJA TIDAK dibakukan di sini -- perubahan A record abbey ke IP
 # fiktif + TTL 15 detik bersifat sementara (soal 20 melarang state ini
 # permanen). Zona di bawah selalu menulis ulang ke kondisi NORMAL setiap node
@@ -21,7 +22,7 @@ RESOLVEOF
 # PENTING: hanya /root yang persist di image ini -- apt install & /etc/bind/*
 # TIDAK bertahan lewat recreate container, jadi seluruh setup ditulis ulang
 # di sini (idempotent) supaya otomatis pulih setiap start.
-dpkg -s bind9 >/dev/null 2>&1 || { apt-get update && apt-get install -y bind9 bind9utils dnsutils; }
+dpkg -s bind9 >/dev/null 2>&1 || { apt-get update || true; apt-get install -y bind9 bind9utils dnsutils; }
 
 cat <<'EOF' > /etc/bind/named.conf.options
 options {
@@ -104,6 +105,9 @@ beta    IN      TXT     "beta"
 gamma   IN      TXT     "gamma"
 delta   IN      TXT     "delta"
 epsilon IN      TXT     "epsilon"
+
+; soal 19: CNAME eksternal
+outbound IN      CNAME   http.badssl.com.
 EOF
 
 cat <<'EOF' > /etc/bind/db.192.234.3

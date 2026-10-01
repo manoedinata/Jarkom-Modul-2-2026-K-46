@@ -4,7 +4,7 @@
 # ==== NODE PENNY ====
 DEBIAN_FRONTEND=noninteractive dpkg --configure -a >/dev/null 2>&1  # selesaikan install tertunda kalau ada
 dpkg -s php8.4-fpm 2>/dev/null | grep -q '^Status: install ok installed' \
-  || { apt-get update && apt-get install -y php8.4-fpm; }
+  || { apt-get update || true; apt-get install -y php8.4-fpm; }
 a2enmod proxy proxy_http proxy_balancer lbmethod_byrequests headers rewrite proxy_fcgi setenvif
 
 mkdir -p /var/www/eternal

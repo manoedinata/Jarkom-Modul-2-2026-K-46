@@ -2,7 +2,7 @@
 # Soal 4: BIND9 authoritative zone k46.com di prab (master) + tedd (slave)
 
 # ==== NODE PRAB (master) ====
-apt-get update
+apt-get update || true
 DEBIAN_FRONTEND=noninteractive apt-get install -y bind9 bind9utils dnsutils
 
 cat <<'EOF' > /etc/bind/named.conf.options
@@ -44,7 +44,7 @@ EOF
 service named restart
 
 # ==== NODE TEDD (slave) ====
-apt-get update
+apt-get update || true
 DEBIAN_FRONTEND=noninteractive apt-get install -y bind9 bind9utils dnsutils
 
 cat <<'EOF' > /etc/bind/named.conf.options

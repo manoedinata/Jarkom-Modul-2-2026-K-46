@@ -2,7 +2,7 @@
 # Soal 9: web statis Apache di area vault (obladi, desmond) + autoindex /arsip/
 
 # ==== NODE OBLADI & DESMOND ====
-apt-get update
+apt-get update || true
 DEBIAN_FRONTEND=noninteractive apt-get install -y apache2
 
 mkdir -p /var/www/html/arsip

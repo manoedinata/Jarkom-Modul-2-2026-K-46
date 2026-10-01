@@ -16,7 +16,7 @@ RESOLVEOF
 # soal 15: /orion statis murni (tanpa PHP), dilayani langsung oleh Nginx.
 # PENTING: hanya /root yang persist -- apt install & /etc/nginx/*, /var/www/*
 # ditulis ulang di sini (idempotent) supaya otomatis pulih setiap start.
-dpkg -s nginx >/dev/null 2>&1 || { apt-get update && apt-get install -y nginx; }
+dpkg -s nginx >/dev/null 2>&1 || { apt-get update || true; apt-get install -y nginx; }
 
 mkdir -p /var/www/orion
 cat <<'EOF' > /var/www/orion/index.html

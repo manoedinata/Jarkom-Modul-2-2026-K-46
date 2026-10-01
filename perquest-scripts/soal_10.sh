@@ -3,6 +3,7 @@
 # clean URL /profil (tanpa .php)
 
 # ==== NODE OBLADA & MOLLY ====
+apt-get update || true
 DEBIAN_FRONTEND=noninteractive apt-get install -y nginx php8.4-fpm
 
 mkdir -p /var/www/core

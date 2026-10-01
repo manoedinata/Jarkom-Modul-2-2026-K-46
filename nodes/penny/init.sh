@@ -17,10 +17,10 @@ RESOLVEOF
 # soal 15: /eternal proxy ke PHP-FPM lokal (dikecualikan dari balancer juga).
 # PENTING: hanya /root yang persist -- apt install, a2enmod, /etc/apache2/*
 # ditulis ulang di sini (idempotent) supaya otomatis pulih setiap start.
-dpkg -s apache2 >/dev/null 2>&1 || { apt-get update && apt-get install -y apache2; }
+dpkg -s apache2 >/dev/null 2>&1 || { apt-get update || true; apt-get install -y apache2; }
 DEBIAN_FRONTEND=noninteractive dpkg --configure -a >/dev/null 2>&1  # selesaikan install tertunda kalau ada
 dpkg -s php8.4-fpm 2>/dev/null | grep -q '^Status: install ok installed' \
-  || { apt-get update && apt-get install -y php8.4-fpm; }
+  || { apt-get update || true; apt-get install -y php8.4-fpm; }
 a2enmod proxy proxy_http proxy_balancer lbmethod_byrequests headers rewrite proxy_fcgi setenvif >/dev/null
 
 htpasswd -bc /etc/apache2/.htpasswd prabs pakar_pinter_jadi_goblok >/dev/null

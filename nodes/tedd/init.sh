@@ -14,7 +14,7 @@ RESOLVEOF
 # soal 4/8: BIND9 slave untuk zona k46.com + 3 reverse zone.
 # PENTING: hanya /root yang persist -- apt install & /etc/bind/* ditulis ulang
 # di sini (idempotent) supaya otomatis pulih setiap start.
-dpkg -s bind9 >/dev/null 2>&1 || { apt-get update && apt-get install -y bind9 bind9utils dnsutils; }
+dpkg -s bind9 >/dev/null 2>&1 || { apt-get update || true; apt-get install -y bind9 bind9utils dnsutils; }
 
 cat <<'EOF' > /etc/bind/named.conf.options
 options {

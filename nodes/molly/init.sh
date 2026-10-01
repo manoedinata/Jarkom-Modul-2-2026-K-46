@@ -16,7 +16,7 @@ RESOLVEOF
 # PENTING: hanya /root yang persist -- apt install & /etc/nginx/*, /etc/php/*,
 # /var/www/* ditulis ulang di sini (idempotent) supaya otomatis pulih tiap start.
 dpkg -s nginx >/dev/null 2>&1 && dpkg -s php8.4-fpm >/dev/null 2>&1 \
-    || { apt-get update && apt-get install -y nginx php8.4-fpm; }
+    || { apt-get update || true; apt-get install -y nginx php8.4-fpm; }
 
 mkdir -p /var/www/core
 cat <<'EOF' > /var/www/core/index.php
