@@ -4,8 +4,8 @@
 
 | Nama | NRP |
 | ---- | --- |
-| TODO | TODO |
-| TODO | TODO |
+| Daffa Rifqi As Shidiq | 5027251038 |
+| Hendra Manudinata | 5027251051 |
 
 ## Laporan
 
