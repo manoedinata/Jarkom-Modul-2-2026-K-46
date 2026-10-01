@@ -62,7 +62,6 @@ server {
     }
 }
 EOF
-# (ganti NODE.k46.com -> oblada.k46.com pada node oblada, molly.k46.com pada node molly)
 
 service php8.4-fpm restart
 service nginx restart

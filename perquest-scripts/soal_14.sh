@@ -1,19 +1,46 @@
 #!/bin/bash
 # Soal 14: access log web server area vault & core mencatat IP client asli
 # (bukan IP penny/abbey), diteruskan via header X-Real-IP dari soal 11.
-# sudah dibakukan (idempotent) ke nodes/{obladi,desmond,oblada,molly}/init.sh
 
-# ==== NODE OBLADI & DESMOND (Apache) ====
-# sudah ada sejak soal 11 (lihat perquest-scripts/soal_11.sh):
-#   LogFormat "%h %l %u %t \"%r\" %>s %b host=%{Host}i xrealip=%{X-Real-IP}i" proxytrace
-#   CustomLog ${APACHE_LOG_DIR}/access.log proxytrace
+# ==== NODE OBLADI & DESMOND ====
+# LogFormat proxytrace sudah ada sejak soal 11 -- tidak ada perubahan lagi,
+# cukup pastikan service berjalan dengan config tersebut.
 service apache2 restart
 
-# ==== NODE OBLADA & MOLLY (Nginx), ditambahkan ke sites-available/default ====
-#   log_format proxytrace '$http_x_real_ip - $remote_addr [$time_local] "$request" '
-#                         '$status $body_bytes_sent host=$host';
-#   # di dalam server { }:
-#   access_log /var/log/nginx/access.log proxytrace;
+# ==== NODE OBLADA & MOLLY ====
+# server {} soal 10 + log_format/access_log proxytrace (Nginx belum punya ini)
+# buang definisi proxytrace lama di conf.d (kalau ada, server lab dipakai
+# bergantian) -- log_format dengan nama sama di 2 tempat = nginx -t gagal
+rm -f /etc/nginx/conf.d/proxytrace.conf
+cat <<'EOF' > /etc/nginx/sites-available/default
+log_format proxytrace '$http_x_real_ip - $remote_addr [$time_local] "$request" '
+                       '$status $body_bytes_sent host=$host';
+
+server {
+    listen 80;
+    server_name NODE.k46.com;
+    root /var/www/core;
+    index index.php;
+    access_log /var/log/nginx/access.log proxytrace;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location = /profil {
+        rewrite ^ /profil.php last;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.4-fpm.sock;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+EOF
 nginx -t && service nginx restart
 
 # ==== VERIFIKASI (dari client lain) ====

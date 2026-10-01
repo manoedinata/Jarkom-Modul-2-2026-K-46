@@ -1,6 +1,5 @@
 #!/bin/bash
 # Soal 17: TXT record untuk alpha, beta, gamma, delta, epsilon
-# sudah dibakukan (idempotent) ke nodes/prab/init.sh (zona db.k46.com)
 
 # ==== NODE PRAB (master) ====
 cat <<'EOF' >> /etc/bind/db.k46.com
@@ -13,7 +12,9 @@ delta   IN      TXT     "delta"
 epsilon IN      TXT     "epsilon"
 EOF
 
-# naikkan serial SOA di /etc/bind/db.k46.com sebelum restart (2026093004 -> 2026100101)
+# naikkan serial SOA (increment otomatis, tidak bergantung nilai sebelumnya)
+awk '/; serial/ && !f{$1=$1+1;f=1}1' /etc/bind/db.k46.com > /etc/bind/db.k46.com.new \
+  && mv /etc/bind/db.k46.com.new /etc/bind/db.k46.com
 named-checkzone k46.com /etc/bind/db.k46.com
 service named restart
 

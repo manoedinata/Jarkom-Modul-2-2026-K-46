@@ -25,7 +25,6 @@ cat <<'EOF' > /etc/apache2/sites-available/000-default.conf
     CustomLog ${APACHE_LOG_DIR}/access.log combined
 </VirtualHost>
 EOF
-# (ganti NODE.k46.com -> obladi.k46.com pada node obladi, desmond.k46.com pada node desmond)
 
 grep -q ServerName /etc/apache2/apache2.conf || echo 'ServerName NODE.k46.com' >> /etc/apache2/apache2.conf
 service apache2 restart

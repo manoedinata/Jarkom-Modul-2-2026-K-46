@@ -52,6 +52,7 @@ $host = gethostname();
 </html>
 EOF
 
+rm -f /etc/nginx/conf.d/proxytrace.conf
 cat <<'EOF' > /etc/nginx/sites-available/default
 log_format proxytrace '$http_x_real_ip - $remote_addr [$time_local] "$request" '
                        '$status $body_bytes_sent host=$host';

@@ -56,14 +56,44 @@ server {
 EOF
 service nginx restart
 
-# ==== NODE OBLADI & DESMOND (LogFormat untuk buktikan header diteruskan) ====
-# (lihat perquest-scripts/soal_9.sh untuk vhost dasarnya; LogFormat ditambah:)
-# LogFormat "%h %l %u %t \"%r\" %>s %b host=%{Host}i xrealip=%{X-Real-IP}i" proxytrace
-# CustomLog ${APACHE_LOG_DIR}/access.log proxytrace
+# ==== NODE OBLADI & DESMOND ====
+# vhost soal 9 + LogFormat untuk buktikan header X-Real-IP diteruskan
+cat <<'EOF' > /etc/apache2/sites-available/000-default.conf
+<VirtualHost *:80>
+    ServerName NODE.k46.com
+    DocumentRoot /var/www/html
 
-# ==== NODE OBLADA & MOLLY (index.php ditambah echo header, lihat soal_10.sh) ====
-# <p>Host header diterima: <?php echo $_SERVER['HTTP_HOST'] ?? '-'; ?></p>
-# <p>X-Real-IP diterima: <?php echo $_SERVER['HTTP_X_REAL_IP'] ?? '-'; ?></p>
+    <Directory /var/www/html/arsip>
+        Options +Indexes
+        AllowOverride None
+        Require all granted
+    </Directory>
+
+    LogFormat "%h %l %u %t \"%r\" %>s %b host=%{Host}i xrealip=%{X-Real-IP}i" proxytrace
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log proxytrace
+</VirtualHost>
+EOF
+service apache2 restart
+
+# ==== NODE OBLADA & MOLLY ====
+# index.php soal 10 + echo Host/X-Real-IP untuk buktikan header diteruskan
+cat <<'EOF' > /var/www/core/index.php
+<?php
+$host = gethostname();
+?>
+<!doctype html>
+<html>
+<head><title>The Mesh - Beranda</title></head>
+<body>
+    <h1>Selamat datang di The Mesh</h1>
+    <p>Dilayani oleh: <?php echo $host; ?></p>
+    <p>Host header diterima: <?php echo $_SERVER['HTTP_HOST'] ?? '-'; ?></p>
+    <p>X-Real-IP diterima: <?php echo $_SERVER['HTTP_X_REAL_IP'] ?? '-'; ?></p>
+    <p><a href="/profil">Lihat Profil</a></p>
+</body>
+</html>
+EOF
 
 # ==== VERIFIKASI (dari client lain) ====
 # distribusi ke area vault (via access log obladi & desmond)

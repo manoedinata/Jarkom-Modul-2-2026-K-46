@@ -54,4 +54,8 @@ zone "5.234.192.in-addr.arpa" {
 };
 EOF
 
+# server lab ini dipakai bergantian; buang cache zona lama tiap boot supaya
+# AXFR dari prab tidak pernah ditolak karena slave memegang serial lama yang
+# kebetulan lebih tinggi (serial DNS tidak boleh "mundur")
+rm -f /var/cache/bind/db.* /var/cache/bind/*.jnl
 service named restart

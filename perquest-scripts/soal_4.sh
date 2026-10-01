@@ -67,6 +67,10 @@ zone "k46.com" {
 };
 EOF
 
+# server lab ini dipakai bergantian; buang cache zona lama (kalau ada, mis.
+# dari sesi sebelumnya dengan serial lebih tinggi dari punya kita) supaya
+# AXFR awal dari prab selalu diterima, bukan ditolak karena "serial lebih lama"
+rm -f /var/cache/bind/db.* /var/cache/bind/*.jnl
 service named restart
 
 # ==== NODE ALPHA/BETA/GAMMA/DELTA/EPSILON/ABBEY/PENNY/PRAB/TEDD/OBLADI/DESMOND/OBLADA/MOLLY ====

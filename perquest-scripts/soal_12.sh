@@ -16,15 +16,38 @@ cat <<'EOF' > /var/www/admin/index.html
 </html>
 EOF
 
-# ditambahkan ke vhost (lihat perquest-scripts/soal_11.sh untuk vhost dasarnya):
-#   Alias /admin /var/www/admin
-#   <Directory /var/www/admin>
-#       AuthType Basic
-#       AuthName "Restricted Area"
-#       AuthUserFile /etc/apache2/.htpasswd
-#       Require valid-user
-#   </Directory>
-#   ProxyPass "/admin" "!"   <- kecualikan dari reverse proxy balancer
+# vhost soal 11 + Alias/Directory /admin (basic auth) + pengecualian dari balancer
+cat <<'EOF' > /etc/apache2/sites-available/000-default.conf
+<Proxy "balancer://vaultcluster">
+    BalancerMember "http://192.234.5.4:80"
+    BalancerMember "http://192.234.5.5:80"
+</Proxy>
+
+<VirtualHost *:80>
+    ServerName penny.k46.com
+
+    ProxyPreserveHost On
+
+    RewriteEngine On
+    RewriteRule .* - [E=REAL_IP:%{REMOTE_ADDR}]
+    RequestHeader set X-Real-IP "%{REAL_IP}e"
+
+    Alias /admin /var/www/admin
+    <Directory /var/www/admin>
+        AuthType Basic
+        AuthName "Restricted Area"
+        AuthUserFile /etc/apache2/.htpasswd
+        Require valid-user
+    </Directory>
+
+    ProxyPass "/admin" "!"
+    ProxyPass "/" "balancer://vaultcluster/"
+    ProxyPassReverse "/" "balancer://vaultcluster/"
+
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+EOF
 service apache2 restart
 
 # ==== VERIFIKASI (dari client lain) ====

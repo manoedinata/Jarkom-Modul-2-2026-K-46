@@ -12,7 +12,11 @@ core    IN      A       192.234.5.7
 www     IN      CNAME   penny.k46.com.
 static  IN      CNAME   abbey.k46.com.
 EOF
-# (jangan lupa naikkan serial SOA di /etc/bind/db.k46.com sebelum reload)
+
+# naikkan serial SOA (increment otomatis, tidak bergantung nilai sebelumnya)
+awk '/; serial/ && !f{$1=$1+1;f=1}1' /etc/bind/db.k46.com > /etc/bind/db.k46.com.new \
+  && mv /etc/bind/db.k46.com.new /etc/bind/db.k46.com
+named-checkzone k46.com /etc/bind/db.k46.com
 service named restart
 
 # ==== VERIFIKASI (dari dua klien berbeda: gamma dan delta) ====
