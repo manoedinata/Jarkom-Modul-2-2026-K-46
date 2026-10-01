@@ -1,11 +1,14 @@
 #!/bin/bash
-# Soal 18: ubah sementara A record abbey, TTL 15 detik,
-# buktikan 3 fase caching DNS, lalu REVERT (soal 20 melarang state fiktif ini permanen).
-# CATATAN: skenario ini sengaja TIDAK dibakukan ke nodes/prab/init.sh --
-# init.sh selalu menulis ulang zona ke kondisi normal (TTL 604800, IP abbey asli)
-# setiap node di-restart, supaya final state (soal 20) otomatis bersih.
+# Soal 18: ubah A record abbey ke IP fiktif, TTL 15 detik,
+# buktikan 3 fase caching DNS.
+# CATATAN: soal ini SENGAJA bersifat sementara/manual -- nodes/prab/init.sh
+# TIDAK membakukan perubahan ini, jadi setiap kali prab di-restart, state-nya
+# kembali ke kondisi normal (soal 17) dan skrip ini perlu dijalankan ULANG
+# secara manual untuk mendemokan soal 18 lagi. Setelah selesai, revert via
+# perquest-scripts/soal_20.sh (walau cuma soal demo manual, restart prab juga
+# otomatis mengembalikan ke normal lewat init.sh).
 
-# ==== PRAB: kondisi awal (sesuai nodes/prab/init.sh) ====
+# ==== PRAB: kondisi awal (sebelum soal 18 dikerjakan / sebelum dibakukan) ====
 # abbey   IN   A   192.234.3.2         (TTL default 604800 dari $TTL)
 dig @192.234.5.2 abbey.k46.com +noall +answer
 
@@ -50,13 +53,6 @@ done
 dig @192.234.5.2 k46.com SOA +short
 dig @192.234.5.3 k46.com SOA +short   # -> serial harus sama
 
-# ==== REVERT (WAJIB -- soal 20 melarang fake A record / TTL pendek di final state) ====
-sed -i 's/abbey   15      IN      A       10.10.10.10/abbey   IN      A       192.234.3.2/' /etc/bind/db.k46.com
-sed -i 's/2026100103 ; serial/2026100104 ; serial/' /etc/bind/db.k46.com
-named-checkzone k46.com /etc/bind/db.k46.com
-service named restart
-dig @192.234.5.2 abbey.k46.com +noall +answer   # -> kembali 192.234.3.2, TTL normal (604800)
 pkill dnsmasq 2>/dev/null
 
-# catatan: hasil akhir yang permanen (serial final, TTL normal) harus disamakan
-# juga di nodes/prab/init.sh supaya node restart tidak membawa balik state demo ini.
+# Revert state fiktif ini BUKAN bagian dari soal 18 -- lihat perquest-scripts/soal_20.sh.

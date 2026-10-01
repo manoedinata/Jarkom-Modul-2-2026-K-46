@@ -13,6 +13,11 @@ RESOLVEOF
 
 # soal 4/5/7/8: BIND9 master untuk zona k46.com + 3 reverse zone.
 # soal 17: TXT record untuk client (alpha, beta, gamma, delta, epsilon).
+# soal 18: SENGAJA TIDAK dibakukan di sini -- perubahan A record abbey ke IP
+# fiktif + TTL 15 detik bersifat sementara (soal 20 melarang state ini
+# permanen). Zona di bawah selalu menulis ulang ke kondisi NORMAL setiap node
+# start/restart; untuk demo soal 18, jalankan manual perquest-scripts/soal_18.sh
+# (lalu perquest-scripts/soal_20.sh untuk revert) setiap kali setelah restart.
 # PENTING: hanya /root yang persist di image ini -- apt install & /etc/bind/*
 # TIDAK bertahan lewat recreate container, jadi seluruh setup ditulis ulang
 # di sini (idempotent) supaya otomatis pulih setiap start.

@@ -628,4 +628,4 @@
     prab.k46.com. admin.k46.com. 2026100103 3600 1800 604800 86400
     ```
 
-    Setelah pembuktian selesai, perubahan ini **di-revert** (IP `abbey` kembali ke `192.234.3.2`, TTL kembali ke default 604800, serial naik sekali lagi ke `2026100104` karena serial tidak boleh mundur) — state fiktif ini sengaja tidak dibakukan ke `nodes/prab/init.sh`, yang selalu menulis ulang zona ke kondisi normal supaya final state (soal 20) otomatis bersih tanpa langkah manual tambahan.
+    Perubahan soal ini (`abbey -> 10.10.10.10`, TTL 15, serial `2026100103`) sengaja **tidak** dibakukan ke `nodes/prab/init.sh` — sifatnya sementara untuk kebutuhan demo, dan soal 20 justru melarang state ini bertahan permanen. Praktiknya: `nodes/prab/init.sh` selalu menulis ulang zona ke kondisi normal setiap **prab** start/restart, jadi demo soal ini (`perquest-scripts/soal_18.sh`) perlu dijalankan ulang secara manual tiap kali setelah restart, lalu dibereskan dengan `perquest-scripts/soal_20.sh` (lihat poin 20).
