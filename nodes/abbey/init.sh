@@ -12,9 +12,23 @@ nameserver 192.168.122.1
 RESOLVEOF
 
 # soal 11: Nginx reverse proxy ke area core (oblada, molly).
-# PENTING: hanya /root yang persist -- apt install & /etc/nginx/* ditulis
-# ulang di sini (idempotent) supaya otomatis pulih setiap start.
+# soal 13: canonical-host -- IP/abbey.k46.com redirect 302 ke static.k46.com.
+# soal 15: /orion statis murni (tanpa PHP), dilayani langsung oleh Nginx.
+# PENTING: hanya /root yang persist -- apt install & /etc/nginx/*, /var/www/*
+# ditulis ulang di sini (idempotent) supaya otomatis pulih setiap start.
 dpkg -s nginx >/dev/null 2>&1 || { apt-get update && apt-get install -y nginx; }
+
+mkdir -p /var/www/orion
+cat <<'EOF' > /var/www/orion/index.html
+<!doctype html>
+<html>
+<head><title>Orion</title></head>
+<body>
+    <h1>Orion</h1>
+    <p>Halaman statis Orion.</p>
+</body>
+</html>
+EOF
 
 cat <<'EOF' > /etc/nginx/sites-available/default
 upstream corecluster {
@@ -26,6 +40,18 @@ server {
     listen 80;
     server_name abbey.k46.com;
 
+    # soal 13: non-canonical host (IP abbey atau abbey.k46.com) -> static.k46.com
+    if ($host = 192.234.3.2) {
+        return 302 http://static.k46.com$request_uri;
+    }
+    if ($host = abbey.k46.com) {
+        return 302 http://static.k46.com$request_uri;
+    }
+
+    location /orion/ {
+        alias /var/www/orion/;
+    }
+
     location / {
         proxy_pass http://corecluster;
         proxy_set_header Host $host;
@@ -34,4 +60,4 @@ server {
 }
 EOF
 
-service nginx restart
+nginx -t && service nginx restart

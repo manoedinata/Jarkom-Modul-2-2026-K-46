@@ -12,6 +12,7 @@ nameserver 192.168.122.1
 RESOLVEOF
 
 # soal 4/5/7/8: BIND9 master untuk zona k46.com + 3 reverse zone.
+# soal 17: TXT record untuk client (alpha, beta, gamma, delta, epsilon).
 # PENTING: hanya /root yang persist di image ini -- apt install & /etc/bind/*
 # TIDAK bertahan lewat recreate container, jadi seluruh setup ditulis ulang
 # di sini (idempotent) supaya otomatis pulih setiap start.
@@ -62,7 +63,7 @@ EOF
 cat <<'EOF' > /etc/bind/db.k46.com
 $TTL 604800
 @       IN      SOA     prab.k46.com. admin.k46.com. (
-                        2026093003 ; serial
+                        2026100101 ; serial
                         3600       ; refresh
                         1800       ; retry
                         604800     ; expire
@@ -91,6 +92,13 @@ core    IN      A       192.234.5.6
 core    IN      A       192.234.5.7
 www     IN      CNAME   penny.k46.com.
 static  IN      CNAME   abbey.k46.com.
+
+; soal 17: TXT record client sayap-kiri/sayap-kanan
+alpha   IN      TXT     "alpha"
+beta    IN      TXT     "beta"
+gamma   IN      TXT     "gamma"
+delta   IN      TXT     "delta"
+epsilon IN      TXT     "epsilon"
 EOF
 
 cat <<'EOF' > /etc/bind/db.192.234.3

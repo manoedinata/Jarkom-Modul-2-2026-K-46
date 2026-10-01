@@ -12,6 +12,7 @@ nameserver 192.168.122.1
 RESOLVEOF
 
 # soal 10/11: web dinamis PHP-FPM + nginx, clean URL /profil.
+# soal 14: log_format proxytrace -- catat X-Real-IP (client asli) dari abbey.
 # PENTING: hanya /root yang persist -- apt install & /etc/nginx/*, /etc/php/*,
 # /var/www/* ditulis ulang di sini (idempotent) supaya otomatis pulih tiap start.
 dpkg -s nginx >/dev/null 2>&1 && dpkg -s php8.4-fpm >/dev/null 2>&1 \
@@ -52,11 +53,15 @@ $host = gethostname();
 EOF
 
 cat <<'EOF' > /etc/nginx/sites-available/default
+log_format proxytrace '$http_x_real_ip - $remote_addr [$time_local] "$request" '
+                       '$status $body_bytes_sent host=$host';
+
 server {
     listen 80;
     server_name oblada.k46.com;
     root /var/www/core;
     index index.php;
+    access_log /var/log/nginx/access.log proxytrace;
 
     location / {
         try_files $uri $uri/ =404;

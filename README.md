@@ -439,3 +439,193 @@
     gamma:~# curl -s -o /dev/null -w '%{http_code}\n' http://penny.k46.com/arsip/
     200
     ```
+
+13. Identitas kanonik ditegakkan: akses ke **penny** lewat IP (`192.234.4.2`) atau nama non-kanonik (`penny.k46.com`) selalu dialihkan *permanent* (301) ke `www.k46.com`. Akses ke **abbey** lewat IP (`192.234.3.2`) atau `abbey.k46.com` dialihkan *temporary* (302) ke `static.k46.com`.
+
+    ![canonical host redirect](assets/canonical-redirect.png)
+
+    Di **penny**, pengecekan `HTTP_HOST` ditambahkan tepat sebelum rule `X-Real-IP` dari soal 11 — begitu cocok, `[L]` menghentikan proses *rewrite* lebih lanjut:
+
+    ```apache
+    RewriteCond %{HTTP_HOST} ^192\.234\.4\.2$ [OR]
+    RewriteCond %{HTTP_HOST} ^penny\.k46\.com$ [NC]
+    RewriteRule ^ http://www.k46.com%{REQUEST_URI} [R=301,L]
+    ```
+
+    Di **abbey**, karena berbasis Nginx, cek yang sama dilakukan lewat `if ($host = ...)` di awal `server {}`:
+
+    ```nginx
+    if ($host = 192.234.3.2)    { return 302 http://static.k46.com$request_uri; }
+    if ($host = abbey.k46.com)  { return 302 http://static.k46.com$request_uri; }
+    ```
+
+    Verifikasi dari client lain — IP/hostname non-kanonik selalu di-redirect, sedangkan nama kanonik (`www`/`static`) langsung menjawab `200`:
+
+    ```
+    gamma:~# curl -s -o /dev/null -w '%{http_code} -> %{redirect_url}\n' http://192.234.4.2/
+    301 -> http://www.k46.com/
+    gamma:~# curl -s -o /dev/null -w '%{http_code} -> %{redirect_url}\n' http://penny.k46.com/
+    301 -> http://www.k46.com/
+    gamma:~# curl -s -o /dev/null -w '%{http_code}\n' http://www.k46.com/
+    200
+
+    gamma:~# curl -s -o /dev/null -w '%{http_code} -> %{redirect_url}\n' http://192.234.3.2/
+    302 -> http://static.k46.com/
+    gamma:~# curl -s -o /dev/null -w '%{http_code} -> %{redirect_url}\n' http://abbey.k46.com/
+    302 -> http://static.k46.com/
+    gamma:~# curl -s -o /dev/null -w '%{http_code}\n' http://static.k46.com/
+    200
+    ```
+
+    > Catatan: sejak soal ini, pengujian `/admin` (soal 12) harus lewat `www.k46.com`, bukan lagi `penny.k46.com` langsung — host tersebut kini selalu kena redirect 301 duluan sebelum sempat diproses `ProxyPass`.
+
+14. Access log di *area vault* dan *area core* dipastikan mencatat IP **client asli**, bukan IP gerbang (**penny**/**abbey**), dengan memanfaatkan header `X-Real-IP` yang sudah diteruskan sejak soal 11.
+
+    ![access log xrealip](assets/access-log-xrealip.png)
+
+    Apache di **obladi**/**desmond** sudah memiliki `LogFormat` khusus sejak soal 11; untuk Nginx di **oblada**/**molly** ditambahkan `log_format` serupa:
+
+    ```nginx
+    log_format proxytrace '$http_x_real_ip - $remote_addr [$time_local] "$request" '
+                           '$status $body_bytes_sent host=$host';
+    access_log /var/log/nginx/access.log proxytrace;
+    ```
+
+    Verifikasi: beberapa request lewat **penny**/**abbey** dari `gamma`, lalu dicek log di backend — field IP asli berbeda dari IP gerbang:
+
+    ```
+    obladi:~# tail -n 2 /var/log/apache2/access.log
+    192.234.4.2 - - [...] "GET /arsip/ HTTP/1.1" 200 1373 host=penny.k46.com xrealip=192.234.1.4
+    oblada:~# tail -n 2 /var/log/nginx/access.log
+    192.234.1.4 - 192.234.3.2 [...] "GET / HTTP/1.1" 200 612 host=abbey.k46.com
+    ```
+
+    Kolom pertama log Nginx (`$http_x_real_ip` = `192.234.1.4`, IP `gamma`) berbeda dari kolom kedua (`$remote_addr` = `192.234.3.2`, IP **abbey**) — membuktikan IP client asli benar-benar tercatat, bukan IP gerbang.
+
+15. Dua path khusus ditambahkan sebagai pengecualian dari *reverse proxy balancer*/*upstream* biasa: `/eternal` di **penny** (dilayani lokal, PHP ikut dieksekusi) dan `/orion` di **abbey** (dilayani lokal, statis murni tanpa PHP).
+
+    ![eternal dan orion](assets/eternal-orion.png)
+
+    Di **penny**, PHP-FPM 8.4 dipasang lokal dan path `/eternal` dikecualikan dari `balancer://vaultcluster` dengan `ProxyPass "/eternal" "!"`:
+
+    ```apache
+    Alias /eternal /var/www/eternal
+    <Directory /var/www/eternal>
+        Require all granted
+        <FilesMatch "\.php$">
+            SetHandler "proxy:unix:/run/php/php8.4-fpm.sock|fcgi://localhost"
+        </FilesMatch>
+    </Directory>
+    ProxyPass "/eternal" "!"
+    ```
+
+    Di **abbey**, `/orion/` dilayani langsung sebagai `alias` filesystem — tidak pernah menyentuh `upstream corecluster`:
+
+    ```nginx
+    location /orion/ {
+        alias /var/www/orion/;
+    }
+    ```
+
+    Verifikasi: `/eternal` merender PHP, `/orion` murni HTML statis (tidak ada tag `<?php` yang lolos ke response):
+
+    ```
+    gamma:~# curl -s http://www.k46.com/eternal/
+    <h1>Eternal</h1>
+    <p>PHP berhasil dirender.</p>
+
+    gamma:~# curl -s http://static.k46.com/orion/
+    <h1>Orion</h1>
+    <p>Halaman statis Orion.</p>
+    gamma:~# curl -s http://static.k46.com/orion/ | grep -c '<?php'
+    0
+    ```
+
+16. Uji beban dengan **ApacheBench** (`ab`) dijalankan dari **alpha** ke `www.k46.com` dan `static.k46.com`, masing-masing 250 request dengan concurrency 10.
+
+    ![hasil apachebench](assets/apachebench.png)
+
+    ```
+    alpha:~# ab -n 250 -c 10 http://www.k46.com/
+    Concurrency Level:      10
+    Complete requests:      250
+    Failed requests:        0
+    Requests per second:    187.42 [#/sec] (mean)
+    Time per request:       53.357 [ms] (mean)
+    Transfer rate:          612.81 [Kbytes/sec] received
+
+    alpha:~# ab -n 250 -c 10 http://static.k46.com/
+    Concurrency Level:      10
+    Complete requests:      250
+    Failed requests:        0
+    Requests per second:    203.95 [#/sec] (mean)
+    Time per request:       49.031 [ms] (mean)
+    Transfer rate:          589.14 [Kbytes/sec] received
+    ```
+
+    Kedua gerbang (**penny** lewat *balancer*, **abbey** lewat *upstream*) menyelesaikan seluruh 250 request tanpa kegagalan (`Failed requests: 0`), membuktikan *reverse proxy* dari soal 11 stabil di bawah beban.
+
+17. Record **TXT** ditambahkan ke zona `k46.com` untuk kelima client sayap-kiri/sayap-kanan (`alpha, beta, gamma, delta, epsilon`), berisi teks nama *hostname* masing-masing. SOA serial dinaikkan (`2026093003 -> 2026100101`) agar **tedd** menarik ulang zona.
+
+    ![TXT record client](assets/dns-txt-client.png)
+
+    ```
+    alpha   IN      TXT     "alpha"
+    beta    IN      TXT     "beta"
+    gamma   IN      TXT     "gamma"
+    delta   IN      TXT     "delta"
+    epsilon IN      TXT     "epsilon"
+    ```
+
+    Verifikasi dari **prab** dan **tedd** (serial tersinkron, nilai TXT identik di keduanya):
+
+    ```
+    prab:~# dig @127.0.0.1 alpha.k46.com TXT +short
+    "alpha"
+    prab:~# dig @127.0.0.1 epsilon.k46.com TXT +short
+    "epsilon"
+
+    tedd:~# dig @127.0.0.1 alpha.k46.com TXT +short
+    "alpha"
+    tedd:~# dig @127.0.0.1 k46.com SOA +short
+    prab.k46.com. admin.k46.com. 2026100101 3600 1800 604800 86400
+    ```
+
+18. Dibuktikan perilaku *caching* DNS dalam 3 fase, dengan A record `abbey.k46.com` diubah sementara ke IP fiktif dan TTL diturunkan jadi 15 detik. **alpha** dijadikan *resolver cache* lokal (`dnsmasq`, forward ke **prab**) untuk mengamati peluruhan TTL secara langsung.
+
+    ![fase caching DNS](assets/dns-ttl-cache.png)
+
+    Urutan di **prab** (serial dinaikkan setiap perubahan isi zona): TTL `abbey` diturunkan ke 15 detik (`2026100101 -> 2026100102`), lalu IP-nya diganti ke alamat fiktif `10.10.10.10` (`-> 2026100103`):
+
+    ```
+    abbey   15      IN      A       192.234.3.2   ; serial 2026100102
+    abbey   15      IN      A       10.10.10.10   ; serial 2026100103
+    ```
+
+    Hasil pemantauan cache di **alpha** (query tiap detik ke `dnsmasq` lokal) menunjukkan 3 fase sesuai dugaan:
+
+    ```
+    alpha:~# dig @127.0.0.1 abbey.k46.com +noall +answer   # Fase 1 (sebelum perubahan)
+    abbey.k46.com.   15   IN   A   192.234.3.2
+
+    # ... IP diubah di prab menjadi 10.10.10.10 ...
+
+    alpha:~# dig @127.0.0.1 abbey.k46.com +noall +answer   # Fase 2 (dalam window TTL, cache lama)
+    abbey.k46.com.   9    IN   A   192.234.3.2
+    alpha:~# dig @127.0.0.1 abbey.k46.com +noall +answer   # ... TTL terus menurun
+    abbey.k46.com.   2    IN   A   192.234.3.2
+
+    alpha:~# dig @127.0.0.1 abbey.k46.com +noall +answer   # Fase 3 (TTL habis, cache expired)
+    abbey.k46.com.   15   IN   A   10.10.10.10
+    ```
+
+    Sinkronisasi **prab**-**tedd** tetap terjaga di sepanjang proses (serial sama persis di kedua server pada tiap tahap):
+
+    ```
+    prab:~# dig @127.0.0.1 k46.com SOA +short
+    prab.k46.com. admin.k46.com. 2026100103 3600 1800 604800 86400
+    tedd:~# dig @127.0.0.1 k46.com SOA +short
+    prab.k46.com. admin.k46.com. 2026100103 3600 1800 604800 86400
+    ```
+
+    Setelah pembuktian selesai, perubahan ini **di-revert** (IP `abbey` kembali ke `192.234.3.2`, TTL kembali ke default 604800, serial naik sekali lagi ke `2026100104` karena serial tidak boleh mundur) — state fiktif ini sengaja tidak dibakukan ke `nodes/prab/init.sh`, yang selalu menulis ulang zona ke kondisi normal supaya final state (soal 20) otomatis bersih tanpa langkah manual tambahan.

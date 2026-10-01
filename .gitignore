@@ -6,5 +6,7 @@ __pycache__/
 
 pyproject.toml
 requirements.txt
-gns3api/
+gns3api
+
 scripts/
+script-dari-daffa/

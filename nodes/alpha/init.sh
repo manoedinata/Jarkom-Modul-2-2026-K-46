@@ -10,3 +10,7 @@ nameserver 192.234.5.2
 nameserver 192.234.5.3
 nameserver 192.168.122.1
 RESOLVEOF
+
+# soal 16: apache2-utils (ab) untuk stress test www.k46.com & static.k46.com.
+# PENTING: hanya /root yang persist -- apk add ditulis ulang (idempotent).
+apk info -e apache2-utils >/dev/null 2>&1 || apk add --no-cache apache2-utils
