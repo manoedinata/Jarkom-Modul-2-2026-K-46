@@ -2,14 +2,12 @@
 
 ## Member
 
-| Nama | NRP |
-| ---- | --- |
+| Nama                  | NRP        |
+| --------------------- | ---------- |
 | Daffa Rifqi As Shidiq | 5027251038 |
-| Hendra Manudinata | 5027251051 |
+| Hendra Manudinata     | 5027251051 |
 
 ## Laporan
-
-> Catatan: tempat screenshot (`assets/*.png`) di bawah ini masih berupa slot kosong dan perlu diisi dengan bukti tangkapan layar asli dari GNS3 (console/browser) sebelum dikumpulkan. Narasi dan output verifikasi di setiap soal sudah sesuai hasil pengerjaan sebenarnya.
 
 1. Sebagai pusat kesadaran *The Mesh*, **rootkit** direntangkan ke lima gerbang utama (Switch6, Switch7, Switch4, Switch5, Switch1) sesuai topologi yang dirancang, lalu seluruh Entitas diberi alamat IP dan *default gateway* menggunakan prefix kelompok K-46: `192.234.x.x`.
 
@@ -17,43 +15,52 @@
 
    Topologi dibangun dengan satu segmen `/24` per switch, dan **rootkit** selalu menempati alamat `.1` di setiap segmen sebagai gateway:
 
-   | Segmen (Switch) | Subnet | Isi |
-   | --- | --- | --- |
-   | Switch6 | 192.234.1.0/24 | rootkit `.1`, alpha `.2`, beta `.3`, gamma `.4` |
-   | Switch7 | 192.234.2.0/24 | rootkit `.1`, delta `.2`, epsilon `.3` |
-   | Switch4 | 192.234.3.0/24 | rootkit `.1`, abbey `.2` |
-   | Switch5 | 192.234.4.0/24 | rootkit `.1`, penny `.2` |
-   | Switch1/2/3 | 192.234.5.0/24 | rootkit `.1`, prab `.2`, tedd `.3`, obladi `.4`, desmond `.5`, oblada `.6`, molly `.7` |
+   | Segmen (Switch) | Subnet         | Isi                                                                                    |
+   | --------------- | -------------- | -------------------------------------------------------------------------------------- |
+   | Switch6         | 192.234.1.0/24 | rootkit `.1`, alpha `.2`, beta `.3`, gamma `.4`                                        |
+   | Switch7         | 192.234.2.0/24 | rootkit `.1`, delta `.2`, epsilon `.3`                                                 |
+   | Switch4         | 192.234.3.0/24 | rootkit `.1`, abbey `.2`                                                               |
+   | Switch5         | 192.234.4.0/24 | rootkit `.1`, penny `.2`                                                               |
+   | Switch1/2/3     | 192.234.5.0/24 | rootkit `.1`, prab `.2`, tedd `.3`, obladi `.4`, desmond `.5`, oblada `.6`, molly `.7` |
 
    Konfigurasi diletakkan pada `/root/init.sh` di setiap node (lihat direktori `nodes/`). Image `ardhptr21/alpinet`/`debinet` yang dipakai sudah memiliki entrypoint (`/etc/*-init.sh`) yang otomatis menjalankan `/root/init.sh` setiap kali container start, sehingga konfigurasi ini juga otomatis bertahan setelah restart (memenuhi kebutuhan soal 20 sejak awal).
 
    Verifikasi IP dan *default gateway* di `rootkit` dan `alpha`:
 
    ```
-   root@rootkit:~# ip -4 addr show | grep -E 'inet|eth'
-       inet 127.0.0.1/8 scope host lo
-   eth1: inet 192.234.1.1/24 scope global eth1
-   eth2: inet 192.234.2.1/24 scope global eth2
-   eth3: inet 192.234.3.1/24 scope global eth3
-   eth4: inet 192.234.4.1/24 scope global eth4
-   eth5: inet 192.234.5.1/24 scope global eth5
+    root@rootkit:~# ip -4 addr show | grep -E 'inet|eth'
+        inet 127.0.0.1/8 scope host lo
+    51634: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 1000
+        inet 192.234.1.1/24 scope global eth1
+    51637: eth2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 1000
+        inet 192.234.2.1/24 scope global eth2
+    51640: eth3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 1000
+        inet 192.234.3.1/24 scope global eth3
+    51643: eth4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 1000
+        inet 192.234.4.1/24 scope global eth4
+    51644: eth5: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UNKNOWN group default qlen 1000
+        inet 192.234.5.1/24 scope global eth5
 
-   alpha:~# ip -4 addr show | grep inet; ip route show default
-       inet 192.234.1.2/24 scope global eth0
-   default via 192.234.1.1 dev eth0
+    alpha:~# ip -4 addr show | grep inet; ip route show default
+        inet 127.0.0.1/8 scope host lo
+        inet 192.234.1.2/24 scope global eth0
+    default via 192.234.1.1 dev eth0
    ```
 
    Verifikasi routing antar segmen (lintas subnet, `gamma` di Switch6 ke `molly` di Switch1/2/3) berhasil lewat `rootkit` (`ttl=63` = satu hop):
 
    ```
-   gamma:~# ping -c 2 192.234.5.7
-   64 bytes from 192.234.5.7: icmp_seq=1 ttl=63 time=1.97 ms
-   64 bytes from 192.234.5.7: icmp_seq=2 ttl=63 time=0.908 ms
-   --- 192.234.5.7 ping statistics ---
-   2 packets transmitted, 2 received, 0% packet loss
+    gamma:~# ping -c 2 192.234.5.7
+    PING 192.234.5.7 (192.234.5.7) 56(84) bytes of data.
+    64 bytes from 192.234.5.7: icmp_seq=1 ttl=63 time=1.72 ms
+    64 bytes from 192.234.5.7: icmp_seq=2 ttl=63 time=0.812 ms
+
+    --- 192.234.5.7 ping statistics ---
+    2 packets transmitted, 2 received, 0% packet loss, time 1111ms
+    rtt min/avg/max/mdev = 0.812/1.266/1.721/0.454 ms
    ```
 
-2. Rootkit membuka jalur menuju NAT agar seluruh Entitas tetap bisa mendapat asupan paket dari dunia luar. Antarmuka WAN (`eth0`, terhubung ke node **NAT**) diaktifkan dengan meminta lease DHCP memakai `udhcpc` bawaan image GNS3 (`/gns3/bin/udhcpc`), lalu **rootkit** dikonfigurasi meneruskan (*masquerade*) lalu lintas keluar bagi seluruh subnet internal.
+1. Rootkit membuka jalur menuju NAT agar seluruh Entitas tetap bisa mendapat asupan paket dari dunia luar. Antarmuka WAN (`eth0`, terhubung ke node **NAT**) diaktifkan dengan meminta lease DHCP memakai `udhcpc` bawaan image GNS3 (`/gns3/bin/udhcpc`), lalu **rootkit** dikonfigurasi meneruskan (*masquerade*) lalu lintas keluar bagi seluruh subnet internal.
 
    ![konfigurasi NAT rootkit](assets/nat-rootkit.png)
 
@@ -73,9 +80,7 @@
    molly:~# ping -c 2 -W3 8.8.8.8    -> 0% packet loss
    ```
 
-3. Untuk memastikan seluruh Entitas dapat saling terhubung lintas jalur (routing internal via rootkit), dilakukan uji *full-mesh* antar lima representasi segmen berbeda (`alpha`, `delta`, `abbey`, `penny`, `prab`) saling ping satu sama lain — seluruh 20 kombinasi berhasil.
-
-   ![full mesh ping](assets/fullmesh-ping.png)
+2. Untuk memastikan seluruh Entitas dapat saling terhubung lintas jalur (routing internal via rootkit), dilakukan uji *full-mesh* antar lima representasi segmen berbeda (`alpha`, `delta`, `abbey`, `penny`, `prab`) saling ping satu sama lain — seluruh 20 kombinasi berhasil.
 
    Untuk menghindari fragmentasi saat instalasi paket (soal-soal berikutnya butuh `apt install`), setiap host **non-router** ditambahkan resolver `192.168.122.1` ke `/etc/resolv.conf` sejak antarmukanya aktif:
 
@@ -93,9 +98,7 @@
    2404:6800:4003:c06::8a  google.com  google.com
    ```
 
-4. Penjaga Direktori mulai menuliskan hukum *The Mesh*: **prab** dibangun sebagai *authoritative nameserver* untuk zona `k46.com`, dan **tedd** menjadi *slave*-nya.
-
-   ![konfigurasi BIND9 prab](assets/bind9-config-prab.png)
+3. Penjaga Direktori mulai menuliskan hukum *The Mesh*: **prab** dibangun sebagai *authoritative nameserver* untuk zona `k46.com`, dan **tedd** menjadi *slave*-nya.
 
    Pada **prab** (`/etc/bind/named.conf.local`):
 
@@ -137,8 +140,6 @@
 
    Setelah fondasi nama berdiri, urutan resolver seluruh Entitas non-router diperbarui menjadi `prab -> tedd -> 192.168.122.1`.
 
-   ![dig ke tedd](assets/dig-tedd.png)
-
    Verifikasi zone transfer berhasil dan kedua server menjawab *authoritative* (`aa` flag) untuk domain apex maupun hostname di dalam zona:
 
    ```
@@ -166,9 +167,7 @@
    2001:4860:4828:7700::  www.google.com  www.google.com
    ```
 
-5. "Entitas tanpa identitas adalah anomali," pesan Rootkit. Seluruh Entitas dinamai (*hostname*) sesuai glosarium. Ternyata *hostname* di dalam container sudah otomatis mengikuti nama node GNS3 sejak topologi dibangun (Docker mengisi `/etc/hostname` dan `/etc/hosts` berdasarkan nama container) — bagian ini tinggal diverifikasi, tidak perlu diubah:
-
-   ![verifikasi hostname](assets/hostname-check.png)
+4. "Entitas tanpa identitas adalah anomali," pesan Rootkit. Seluruh Entitas dinamai (*hostname*) sesuai glosarium. Ternyata *hostname* di dalam container sudah otomatis mengikuti nama node GNS3 sejak topologi dibangun (Docker mengisi `/etc/hostname` dan `/etc/hosts` berdasarkan nama container) — bagian ini tinggal diverifikasi, tidak perlu diubah:
 
    ```
    gamma:~# hostname; cat /etc/hostname; cat /etc/hosts
@@ -182,8 +181,6 @@
    Diverifikasi konsisten di seluruh 14 node (`rootkit, alpha, beta, gamma, delta, epsilon, prab, tedd, abbey, penny, obladi, desmond, oblada, molly`) — semua cocok dengan nama glosarium.
 
    Selanjutnya dibuat domain untuk masing-masing node sesuai namanya (`alpha.k46.com`, `beta.k46.com`, dst.) yang mengarah ke IP node masing-masing, ditambahkan ke zona `k46.com` di **prab**. **prab** dan **tedd** dikecualikan karena domainnya sudah dibuat di soal 4. SOA serial dinaikkan (`2026093002`) agar **tedd** menyadari perubahan dan menarik ulang zona lewat mekanisme *notify* dari soal 4 — tanpa aksi manual tambahan di **tedd**.
-
-   ![domain per-node](assets/dns-pernode.png)
 
    Verifikasi SOA serial tersinkron dan domain baru ter-*resolve*, termasuk dari client biasa (`gamma`) yang bukan `prab`/`tedd`:
 
@@ -206,9 +203,7 @@
    192.234.5.6       oblada.k46.com  oblada.k46.com
    ```
 
-6. Zone transfer antara **prab** dan **tedd** dipastikan berjalan dengan membandingkan serial SOA di keduanya, lalu membuktikan **tedd** benar-benar memegang salinan lengkap zona (bukan cuma serial yang kebetulan sama) lewat *full zone transfer* (AXFR) dari IP **tedd** (`192.234.5.3`, yang diizinkan oleh `allow-transfer` di **prab** sejak soal 4).
-
-   ![zone transfer prab tedd](assets/zone-transfer.png)
+5. Zone transfer antara **prab** dan **tedd** dipastikan berjalan dengan membandingkan serial SOA di keduanya, lalu membuktikan **tedd** benar-benar memegang salinan lengkap zona (bukan cuma serial yang kebetulan sama) lewat *full zone transfer* (AXFR) dari IP **tedd** (`192.234.5.3`, yang diizinkan oleh `allow-transfer` di **prab** sejak soal 4).
 
    ```
    prab:~# dig @127.0.0.1 k46.com SOA +short
@@ -236,9 +231,7 @@
    ; Transfer failed.
    ```
 
-7. **abbey** dan **penny** ditetapkan sebagai gerbang utama, **obladi**+**desmond** sebagai *area vault* (web statis), **oblada**+**molly** sebagai *area core* (web dinamis). Ditambahkan ke zona `k46.com`: A record `vault.k46.com` (mengarah ke IP **obladi** *dan* **desmond**, dua A record satu nama) dan `core.k46.com` (ke **oblada** dan **molly**), serta CNAME `www.k46.com` → `penny.k46.com` dan `static.k46.com` → `abbey.k46.com`.
-
-   ![zona vault core www static](assets/dns-vault-core.png)
+6. **abbey** dan **penny** ditetapkan sebagai gerbang utama, **obladi**+**desmond** sebagai *area vault* (web statis), **oblada**+**molly** sebagai *area core* (web dinamis). Ditambahkan ke zona `k46.com`: A record `vault.k46.com` (mengarah ke IP **obladi** *dan* **desmond**, dua A record satu nama) dan `core.k46.com` (ke **oblada** dan **molly**), serta CNAME `www.k46.com` → `penny.k46.com` dan `static.k46.com` → `abbey.k46.com`.
 
    Verifikasi dari dua klien berbeda (`gamma` dan `delta`) — hasil identik dan konsisten:
 
@@ -270,9 +263,7 @@
    192.234.3.2
    ```
 
-8. Dideklarasikan *reverse zone* untuk segmen jaringan tempat **abbey**, **penny**, *area vault*, dan *area core* berada di **prab** (master). Secara topologi, keempatnya berada di 3 subnet `/24` berbeda (`abbey` di `192.234.3.0/24`, `penny` di `192.234.4.0/24`, *area vault*+*area core* bersama di `192.234.5.0/24`), sehingga dibuat 3 zona reverse terpisah: `3.234.192.in-addr.arpa`, `4.234.192.in-addr.arpa`, `5.234.192.in-addr.arpa`. **tedd** menarik ketiganya sebagai *slave*, lalu diisi PTR agar pencarian balik IP mengembalikan hostname yang benar.
-
-   ![reverse zone PTR](assets/dns-reverse.png)
+7. Dideklarasikan *reverse zone* untuk segmen jaringan tempat **abbey**, **penny**, *area vault*, dan *area core* berada di **prab** (master). Secara topologi, keempatnya berada di 3 subnet `/24` berbeda (`abbey` di `192.234.3.0/24`, `penny` di `192.234.4.0/24`, *area vault*+*area core* bersama di `192.234.5.0/24`), sehingga dibuat 3 zona reverse terpisah: `3.234.192.in-addr.arpa`, `4.234.192.in-addr.arpa`, `5.234.192.in-addr.arpa`. **tedd** menarik ketiganya sebagai *slave*, lalu diisi PTR agar pencarian balik IP mengembalikan hostname yang benar.
 
    ```
    ; /etc/bind/db.192.234.3 (prab)
@@ -308,9 +299,7 @@
    ;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
    ```
 
-9. Layanan web statis dijalankan di *area vault* (**obladi**, **desmond**) menggunakan Apache. Direktori `/var/www/html/arsip/` dibuka dengan `Options +Indexes` sehingga seluruh isinya bisa ditelusuri langsung dari browser (*autoindex*/*directory listing*).
-
-   ![autoindex arsip](assets/apache-autoindex.png)
+8. Layanan web statis dijalankan di *area vault* (**obladi**, **desmond**) menggunakan Apache. Direktori `/var/www/html/arsip/` dibuka dengan `Options +Indexes` sehingga seluruh isinya bisa ditelusuri langsung dari browser (*autoindex*/*directory listing*).
 
    ```apache
    <Directory /var/www/html/arsip>
@@ -341,9 +330,7 @@
    200
    ```
 
-10. Layanan web dinamis dijalankan di *area core* (**oblada**, **molly**) menggunakan PHP-FPM 8.4 di balik nginx. Aplikasi sederhana dibuat dengan dua halaman: beranda (`index.php`) dan profil (`profil.php`), dengan *rewrite rule* agar `/profil` berfungsi tanpa akhiran `.php` (*clean URL*).
-
-    ![web dinamis core](assets/php-clean-url.png)
+9.  Layanan web dinamis dijalankan di *area core* (**oblada**, **molly**) menggunakan PHP-FPM 8.4 di balik nginx. Aplikasi sederhana dibuat dengan dua halaman: beranda (`index.php`) dan profil (`profil.php`), dengan *rewrite rule* agar `/profil` berfungsi tanpa akhiran `.php` (*clean URL*).
 
     ```nginx
     location = /profil {
@@ -372,9 +359,7 @@
         <p>Node: molly</p>
     ```
 
-11. **Penny** (Apache) dikonfigurasi sebagai reverse proxy dengan *balancer* ke seluruh node di *area vault* (**obladi** & **desmond**). **Abbey** (Nginx) dikonfigurasi sebagai reverse proxy ke *area core* (**oblada** & **molly**). Keduanya meneruskan identitas asli pengunjung lewat header `Host` dan `X-Real-IP`.
-
-    ![reverse proxy penny abbey](assets/reverse-proxy.png)
+10. **Penny** (Apache) dikonfigurasi sebagai reverse proxy dengan *balancer* ke seluruh node di *area vault* (**obladi** & **desmond**). **Abbey** (Nginx) dikonfigurasi sebagai reverse proxy ke *area core* (**oblada** & **molly**). Keduanya meneruskan identitas asli pengunjung lewat header `Host` dan `X-Real-IP`.
 
     Catatan debugging: `RequestHeader set X-Real-IP "%{REMOTE_ADDR}s"` (pola yang umum ditemukan di banyak tutorial) **ternyata tidak bekerja** di mod_headers untuk request yang di-proxy — begitu juga varian `%{REMOTE_ADDR}e`, karena `REMOTE_ADDR` belum tersedia di `subprocess_env` pada fase itu. Solusi yang benar: suntikkan dulu lewat `mod_rewrite` (`RewriteRule .* - [E=REAL_IP:%{REMOTE_ADDR}]`), baru `mod_headers` membaca dari variabel itu:
 
@@ -412,9 +397,7 @@
 
     > Catatan operasional penting yang ditemukan saat mengerjakan soal ini: pada image `alpinet`/`debinet`, **hanya `/root` yang persisten** lintas *recreate* container (mis. akibat *close*+*reopen* project di GNS3). Paket yang di-`apt install` dan file konfigurasi di `/etc/...` yang ditulis langsung lewat console **hilang** kalau container dibuat ulang. Karena itu seluruh setup soal 4–11 (BIND9, Apache, Nginx, PHP-FPM, beserta isi filenya) ditulis ulang secara idempoten ke dalam `nodes/<host>/init.sh` masing-masing, bukan sekadar `service ... restart` — supaya truly bertahan dari restart apa pun, sesuai semangat soal 20.
 
-12. Path `/admin` di **penny** (yang menyimpan dokumen rahasia sindikat) dilindungi *basic authentication*, dikecualikan dari *reverse proxy* balancer ke area vault (`ProxyPass "/admin" "!"`) supaya dilayani lokal oleh **penny** sendiri. Kredensial: `prabs` / `pakar_pinter_jadi_goblok`.
-
-    ![basic auth admin](assets/basic-auth-admin.png)
+11. Path `/admin` di **penny** (yang menyimpan dokumen rahasia sindikat) dilindungi *basic authentication*, dikecualikan dari *reverse proxy* balancer ke area vault (`ProxyPass "/admin" "!"`) supaya dilayani lokal oleh **penny** sendiri. Kredensial: `prabs` / `pakar_pinter_jadi_goblok`.
 
     ```apache
     Alias /admin /var/www/admin
@@ -440,9 +423,7 @@
     200
     ```
 
-13. Identitas kanonik ditegakkan: akses ke **penny** lewat IP (`192.234.4.2`) atau nama non-kanonik (`penny.k46.com`) selalu dialihkan *permanent* (301) ke `www.k46.com`. Akses ke **abbey** lewat IP (`192.234.3.2`) atau `abbey.k46.com` dialihkan *temporary* (302) ke `static.k46.com`.
-
-    ![canonical host redirect](assets/canonical-redirect.png)
+12. Identitas kanonik ditegakkan: akses ke **penny** lewat IP (`192.234.4.2`) atau nama non-kanonik (`penny.k46.com`) selalu dialihkan *permanent* (301) ke `www.k46.com`. Akses ke **abbey** lewat IP (`192.234.3.2`) atau `abbey.k46.com` dialihkan *temporary* (302) ke `static.k46.com`.
 
     Di **penny**, pengecekan `HTTP_HOST` ditambahkan tepat sebelum rule `X-Real-IP` dari soal 11 — begitu cocok, `[L]` menghentikan proses *rewrite* lebih lanjut:
 
@@ -479,9 +460,7 @@
 
     > Catatan: sejak soal ini, pengujian `/admin` (soal 12) harus lewat `www.k46.com`, bukan lagi `penny.k46.com` langsung — host tersebut kini selalu kena redirect 301 duluan sebelum sempat diproses `ProxyPass`.
 
-14. Access log di *area vault* dan *area core* dipastikan mencatat IP **client asli**, bukan IP gerbang (**penny**/**abbey**), dengan memanfaatkan header `X-Real-IP` yang sudah diteruskan sejak soal 11.
-
-    ![access log xrealip](assets/access-log-xrealip.png)
+13. Access log di *area vault* dan *area core* dipastikan mencatat IP **client asli**, bukan IP gerbang (**penny**/**abbey**), dengan memanfaatkan header `X-Real-IP` yang sudah diteruskan sejak soal 11.
 
     Apache di **obladi**/**desmond** sudah memiliki `LogFormat` khusus sejak soal 11; untuk Nginx di **oblada**/**molly** ditambahkan `log_format` serupa:
 
@@ -502,9 +481,7 @@
 
     Kolom pertama log Nginx (`$http_x_real_ip` = `192.234.1.4`, IP `gamma`) berbeda dari kolom kedua (`$remote_addr` = `192.234.3.2`, IP **abbey**) — membuktikan IP client asli benar-benar tercatat, bukan IP gerbang.
 
-15. Dua path khusus ditambahkan sebagai pengecualian dari *reverse proxy balancer*/*upstream* biasa: `/eternal` di **penny** (dilayani lokal, PHP ikut dieksekusi) dan `/orion` di **abbey** (dilayani lokal, statis murni tanpa PHP).
-
-    ![eternal dan orion](assets/eternal-orion.png)
+14. Dua path khusus ditambahkan sebagai pengecualian dari *reverse proxy balancer*/*upstream* biasa: `/eternal` di **penny** (dilayani lokal, PHP ikut dieksekusi) dan `/orion` di **abbey** (dilayani lokal, statis murni tanpa PHP).
 
     Di **penny**, PHP-FPM 8.4 dipasang lokal dan path `/eternal` dikecualikan dari `balancer://vaultcluster` dengan `ProxyPass "/eternal" "!"`:
 
@@ -541,9 +518,7 @@
     0
     ```
 
-16. Uji beban dengan **ApacheBench** (`ab`) dijalankan dari **alpha** ke `www.k46.com` dan `static.k46.com`, masing-masing 250 request dengan concurrency 10.
-
-    ![hasil apachebench](assets/apachebench.png)
+15. Uji beban dengan **ApacheBench** (`ab`) dijalankan dari **alpha** ke `www.k46.com` dan `static.k46.com`, masing-masing 250 request dengan concurrency 10.
 
     ```
     alpha:~# ab -n 250 -c 10 http://www.k46.com/
@@ -565,9 +540,7 @@
 
     Kedua gerbang (**penny** lewat *balancer*, **abbey** lewat *upstream*) menyelesaikan seluruh 250 request tanpa kegagalan (`Failed requests: 0`), membuktikan *reverse proxy* dari soal 11 stabil di bawah beban.
 
-17. Record **TXT** ditambahkan ke zona `k46.com` untuk kelima client sayap-kiri/sayap-kanan (`alpha, beta, gamma, delta, epsilon`), berisi teks nama *hostname* masing-masing. SOA serial dinaikkan (`2026093003 -> 2026100101`) agar **tedd** menarik ulang zona.
-
-    ![TXT record client](assets/dns-txt-client.png)
+16. Record **TXT** ditambahkan ke zona `k46.com` untuk kelima client sayap-kiri/sayap-kanan (`alpha, beta, gamma, delta, epsilon`), berisi teks nama *hostname* masing-masing. SOA serial dinaikkan (`2026093003 -> 2026100101`) agar **tedd** menarik ulang zona.
 
     ```
     alpha   IN      TXT     "alpha"
@@ -591,9 +564,7 @@
     prab.k46.com. admin.k46.com. 2026100101 3600 1800 604800 86400
     ```
 
-18. Dibuktikan perilaku *caching* DNS dalam 3 fase, dengan A record `abbey.k46.com` diubah sementara ke IP fiktif dan TTL diturunkan jadi 15 detik. **alpha** dijadikan *resolver cache* lokal (`dnsmasq`, forward ke **prab**) untuk mengamati peluruhan TTL secara langsung.
-
-    ![fase caching DNS](assets/dns-ttl-cache.png)
+17. Dibuktikan perilaku *caching* DNS dalam 3 fase, dengan A record `abbey.k46.com` diubah sementara ke IP fiktif dan TTL diturunkan jadi 15 detik. **alpha** dijadikan *resolver cache* lokal (`dnsmasq`, forward ke **prab**) untuk mengamati peluruhan TTL secara langsung.
 
     Urutan di **prab** (serial dinaikkan setiap perubahan isi zona): TTL `abbey` diturunkan ke 15 detik (`2026100101 -> 2026100102`), lalu IP-nya diganti ke alamat fiktif `10.10.10.10` (`-> 2026100103`):
 
@@ -629,3 +600,32 @@
     ```
 
     Perubahan soal ini (`abbey -> 10.10.10.10`, TTL 15, serial `2026100103`) sengaja **tidak** dibakukan ke `nodes/prab/init.sh` — sifatnya sementara untuk kebutuhan demo, dan soal 20 justru melarang state ini bertahan permanen. Praktiknya: `nodes/prab/init.sh` selalu menulis ulang zona ke kondisi normal setiap **prab** start/restart, jadi demo soal ini (`perquest-scripts/soal_18.sh`) perlu dijalankan ulang secara manual tiap kali setelah restart, lalu dibereskan dengan `perquest-scripts/soal_20.sh` (lihat poin 20).
+
+19. Dibuktikan **rootkit** (lewat NAT soal 2) memberi seluruh Entitas akses keluar yang benar-benar transparan: CNAME `outbound.k46.com` dibuat menunjuk ke domain eksternal `http.badssl.com`, lalu dibuktikan kontennya identik dengan mengakses `http.badssl.com` langsung. Berbeda dari soal 18, perubahan ini permanen — ditambahkan ke `nodes/prab/init.sh` agar ikut bertahan lewat restart.
+
+    ```
+    ; ditambahkan ke /etc/bind/db.k46.com
+    outbound IN      CNAME   http.badssl.com.
+    ```
+
+    Verifikasi dari client lain — CNAME ter-resolve benar, dan konten yang diterima lewat `outbound.k46.com` (dengan header `Host` di-set manual ke `http.badssl.com` supaya server tujuan menyajikan halaman yang sama) identik dengan mengakses domain aslinya:
+
+    ```
+    gamma:~# dig +short outbound.k46.com CNAME
+    http.badssl.com.
+
+    gamma:~# curl -s -H "Host: http.badssl.com" http://outbound.k46.com | head -c 200
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="shortcut icon" href="/icons/favicon-red.ico"/>
+      <link rel="a...
+
+    gamma:~# diff <(curl -s http://http.badssl.com) <(curl -s -H "Host: http.badssl.com" http://outbound.k46.com)
+    gamma:~# echo $?
+    0
+    ```
+
+    `diff` tidak menghasilkan output apa pun dan exit code `0` — bukti konten keduanya identik byte-per-byte.
